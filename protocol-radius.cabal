@@ -56,9 +56,9 @@ library
   ghc-options:         -Wall
 
 source-repository head
-type:       git
-location:   https://github.com/khibino/haskell-protocol-radius
+  type:       git
+  location:   https://github.com/khibino/haskell-protocol-radius
 
 source-repository head
-type:       mercurial
-location:   https://bitbucket.org/khibino/haskell-protocol-radius
+  type:       mercurial
+  location:   https://bitbucket.org/khibino/haskell-protocol-radius
