@@ -1,5 +1,5 @@
 name:                protocol-radius
-version:             0.0.1.0
+version:             0.0.1.1
 synopsis:            parser and printer for radius protocol packet
 description:         This package provides
                      parser and printer for radius protocol packet.
