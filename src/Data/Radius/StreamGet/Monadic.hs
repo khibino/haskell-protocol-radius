@@ -46,12 +46,12 @@ type AttributeGetWT' v m =
     (AtWriterT v AtString m)))
 
 attributeGetWT' :: m ((((a, AtList v AtIpV4), AtList v AtText), AtList v AtInteger), AtList v AtString)
-                 -> AttributeGetWT' v m a
+                -> AttributeGetWT' v m a
 attributeGetWT' = WriterT . WriterT . WriterT . WriterT
                    {- coercible operation ^^ -}
 
 runAttributeGetWT' :: AttributeGetWT' v m a
-                    -> m ((((a, AtList v AtIpV4), AtList v AtText), AtList v AtInteger), AtList v AtString)
+                   -> m ((((a, AtList v AtIpV4), AtList v AtText), AtList v AtInteger), AtList v AtString)
 runAttributeGetWT' = runWriterT . runWriterT . runWriterT . runWriterT
                       {- coercible operation ^^ -}
 
@@ -107,11 +107,11 @@ tellT a =
      ta `seq` tell $ pure ta
 
 attributeGetWT :: m (((((a, AtList v AtIpV4), AtList v AtText), AtList v AtInteger), AtList v AtString), DList (Attribute' v))
-                 -> AttributeGetWT v m a
+               -> AttributeGetWT v m a
 attributeGetWT = attributeGetWT' . WriterT
 
 runAttributeGetWT :: AttributeGetWT v m a
-                    -> m (((((a, AtList v AtIpV4), AtList v AtText), AtList v AtInteger), AtList v AtString), DList (Attribute' v))
+                  -> m (((((a, AtList v AtIpV4), AtList v AtText), AtList v AtInteger), AtList v AtString), DList (Attribute' v))
 runAttributeGetWT = runWriterT . runAttributeGetWT'
 
 
