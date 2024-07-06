@@ -12,8 +12,7 @@ module Data.Radius.StreamPut.Monadic (
 
 import Control.Applicative (pure)
 import Control.Monad.Trans.Writer (Writer, runWriter, tell)
-import Data.DList (DList)
-import qualified Data.DList as DList
+import Data.Monoid (Endo (..))
 import Data.Serialize.Put (Put, runPut)
 
 import Data.Radius.Scalar (AtText, AtString, AtInteger, AtIpV4)
@@ -38,11 +37,11 @@ instance AtValueEncode AtIpV4 where
   atValueEncode = Base.atIpV4
 
 -- | Context monad type to build attribute list of packet
-type AttributePutM v = Writer (DList (Attribute' v))
+type AttributePutM v = Writer (Endo [Attribute' v])
 
 exAttribute :: (a -> Put) -> Attribute v a -> AttributePutM v ()
 exAttribute vp (Attribute n v) =
-  tell . pure . Attribute' (untypeNumber n) . runPut $ vp v
+  tell . (Endo . (:)) . Attribute' (untypeNumber n) . runPut $ vp v
 
 attribute :: AtValueEncode a => Attribute v a -> AttributePutM v ()
 attribute = exAttribute atValueEncode
@@ -53,5 +52,5 @@ tellA = (attribute .) . Attribute
 
 -- | Extract attribute list from context
 extractAttributes :: AttributePutM v a -> [Attribute' v]
-extractAttributes w = DList.toList dl  where
+extractAttributes w = appEndo dl []  where
   (_, dl) = runWriter w
