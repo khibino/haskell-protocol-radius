@@ -17,9 +17,7 @@ import Control.Monad (liftM, MonadPlus, guard, msum)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Maybe (MaybeT (..))
 import Control.Monad.Trans.Writer (WriterT (..), tell)
-import Data.Monoid (mempty)
-import Data.DList (DList)
-import qualified Data.DList as DList
+import Data.Monoid (Endo (..), mempty)
 import qualified Data.ByteString as BS
 import Data.Functor.Identity (runIdentity)
 import Data.Serialize.Get (runGet)
@@ -31,7 +29,10 @@ import Data.Radius.Attribute
 import qualified Data.Radius.StreamGet.Base as Base
 
 
-type AtList v at = DList (Attribute v at)
+singAt :: a -> Endo [a]
+singAt = Endo . (:)
+
+type AtList v at = Endo [Attribute v at]
 type AtWriterT v at = WriterT (AtList v at)
 
 {-
@@ -58,7 +59,7 @@ runAttributeGetWT' = runWriterT . runWriterT . runWriterT . runWriterT
 liftAW :: Monad m => m a -> AttributeGetWT' v m a
 liftAW = lift . lift . lift . lift
 
-type AttributeGetWT v m = AttributeGetWT' v (WriterT (DList (Attribute' v)) m)
+type AttributeGetWT v m = AttributeGetWT' v (WriterT (Endo [Attribute' v]) m)
 
 
 decodeAsText :: (TypedNumberSets v, Ord v)
@@ -88,30 +89,30 @@ tellT :: (TypedNumberSets v, Ord v)
 tellT a =
   let emptyW = runIdentity . runAttributeGetWT' $ pure () in
   {-- Not recoverable context type,
-      AttributeGetWT' v (Writer (DList Attribute')) == AttributeGetWT v --}
+      AttributeGetWT' v (Writer (Endo [Attribute' v])) == AttributeGetWT v --}
   attributeGetWT' . WriterT .
-  (maybe (emptyW, pure a) (\x -> (x, mempty)) <$>) . runMaybeT .  {-- un-maybe with default untyped value  --}
+  (maybe (emptyW, singAt a) (\x -> (x, mempty)) <$>) . runMaybeT .  {-- un-maybe with default untyped value  --}
   runAttributeGetWT' $
 
   {-- recoverable context type, AttributeGetWT' (MaybeT (Either String)) --}
   do ta <- liftAW $ decodeAsString  a
-     ta `seq` lift . lift . lift . tell $ pure ta
+     ta `seq` lift . lift . lift . tell $ singAt ta
   <|>
   do ta <- liftAW $ decodeAsInteger a
-     ta `seq` lift . lift . tell $ pure ta
+     ta `seq` lift . lift . tell $ singAt ta
   <|>
   do ta <- liftAW $ decodeAsText    a
-     ta `seq` lift . tell $ pure ta
+     ta `seq` lift . tell $ singAt ta
   <|>
   do ta <- liftAW $ decodeAsIpV4    a
-     ta `seq` tell $ pure ta
+     ta `seq` tell $ singAt ta
 
-attributeGetWT :: m (((((a, AtList v AtIpV4), AtList v AtText), AtList v AtInteger), AtList v AtString), DList (Attribute' v))
+attributeGetWT :: m (((((a, AtList v AtIpV4), AtList v AtText), AtList v AtInteger), AtList v AtString), Endo [Attribute' v])
                -> AttributeGetWT v m a
 attributeGetWT = attributeGetWT' . WriterT
 
 runAttributeGetWT :: AttributeGetWT v m a
-                  -> m (((((a, AtList v AtIpV4), AtList v AtText), AtList v AtInteger), AtList v AtString), DList (Attribute' v))
+                  -> m (((((a, AtList v AtIpV4), AtList v AtText), AtList v AtInteger), AtList v AtString), Endo [Attribute' v])
 runAttributeGetWT = runWriterT . runAttributeGetWT'
 
 
@@ -130,13 +131,14 @@ data Attributes v =
 extractAttributes :: Monad m => AttributeGetWT v m a -> m (Attributes v)
 extractAttributes w = do
   (((((_, ips), txts), ints), strs), utys)  <- runAttributeGetWT w
+  let toList' = (`appEndo` [])
   return $
     Attributes
-    { textAttributes     =  DList.toList txts
-    , stringAttributes   =  DList.toList strs
-    , integerAttributes  =  DList.toList ints
-    , ipV4Attributes     =  DList.toList ips
-    , untypedAttributes  =  DList.toList utys
+    { textAttributes     =  toList' txts
+    , stringAttributes   =  toList' strs
+    , integerAttributes  =  toList' ints
+    , ipV4Attributes     =  toList' ips
+    , untypedAttributes  =  toList' utys
     }
 
 -- | Type class to generalize typed attribute param
