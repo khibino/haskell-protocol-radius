@@ -55,7 +55,6 @@ library
                        , bytestring
                        , text
                        , transformers
-                       , dlist
                        , containers
                        , template-haskell
                        , cereal
